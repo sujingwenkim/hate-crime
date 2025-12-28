@@ -1,0 +1,230 @@
+---
+title: "Uncovering Patterns of Hate: An Exploratory Analysis of U.S. Hate Crime Data (1991-2023)"
+author: "Sujin Kim"
+format:
+  html:
+    embed-resources: true
+    self_contained-math: true
+---
+
+## Introduction
+
+Hate crimes in the United States are a pressing issue that intersect with public safety, civil rights, and social cohesion. This report investigates hate crime trends using national incident-level data to identify patterns in frequency, motivation, and location. Through exploratory analysis, we aim to uncover actionable insights for public policy, law enforcement, and community awareness. The focus is on identifying high-risk bias types, common environments of occurrence, and temporal trends that may warrant targeted intervention.
+
+## Data Description
+
+### Dataset
+
+::: {.callout-note appearance="simple" icon="false"}
+The [Hate Crime Statistics](https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/downloads#datasets) dataset provides annual statistics on the number of incidents, offenses, victims, and offenders in reported crimes that are motivated in whole, or in part, by an offender's bias against the victim's perceived race, gender, gender identity, religion, disability, sexual orientation, or ethnicity.
+:::
+
+-   **Unit of Observation:** Each row represents a single reported hate crime.
+
+-   **Number of Observations:** 253,776 incidents (1991-2023)
+
+-   **Number of Variables:** 28 columns (including incident date, bias type, offender and victim demographics, and location)
+
+### Structure and Limitations
+
+This dataset has a time series structure and includes a mix of date, categorical, and text variables. These enable temporal trend analysis, categorical frequency breakdowns, and descriptive summaries. However, the dataset is not without limitations:
+
+-   Some fields, such as `offender_ethcnicity`, `offender_race`, and `location_name`, have missing or inconsistently reported values, limiting the depth of subgroup analysis.
+
+-   Reporting practices vary across jurisdictions, potentially introducing systematic underreporting bias.
+
+-   The dataset does not provide population data, making it impossible to calculate per capita rates or normalize for population size across regions.
+
+### Key Variables
+
+The following key variables are selected for analysis as they offer a comprehensive understanding of hate crime dynamics (*when they occur, who they target, and where they happen*) when studied together. This allows us to identify vulnerable populations and environments, making the analysis highly relevant for public policy and community safety planning.
+
++-----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Variable        | Description                                                                                                                                                                                                                                          |
++=================+======================================================================================================================================================================================================================================================+
+| `incident_date` | Date of reported hate crime.                                                                                                                                                                                                                         |
+|                 |                                                                                                                                                                                                                                                      |
+|                 | This variable enables trend analysis over time, allowing us to identify whether hate crimes are increasing, decreasing, or stable over specific periods. Temporal data also supports regression modeling and the evaluation of policy interventions. |
++-----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `bias_desc`     | Bias motivation (e.g., Anti-Black, Anti-Jewish, Anti-LGBT).                                                                                                                                                                                          |
+|                 |                                                                                                                                                                                                                                                      |
+|                 | This is the core variable for understanding which identity groups are most frequently targeted. It enables disaggregation by race, religion, and sexual orientation, making it essential for identifying structural discrimination.                  |
++-----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| `location_name` | Location where crime occurred (e.g., residence, school).                                                                                                                                                                                             |
+|                 |                                                                                                                                                                                                                                                      |
+|                 | Understanding where hate crimes happen helps in resource allocation and risk mitigation. It highlights whether hate crimes occur more in private spaces (e.g., homes) for public/institutional settings (e.g., schools, streets).                    |
++-----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+## Analysis and Insights
+
+### 1. Descriptive Statistics
+
+```{r}
+
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(lubridate)
+  library(ggplot2)
+  library(knitr)
+})
+
+crime <- readRDS("hate_crime.rds")
+
+```
+
+```{r}
+
+yearly_summary <- crime %>%
+  mutate(year = year(as.Date(incident_date))) %>%
+  count(year) %>%
+  summarise(
+    Mean = mean(n),
+    Median = median(n),
+    IQR = IQR(n),
+    SD = sd(n)
+  )
+
+knitr::kable(yearly_summary, caption = "Summary Statistics for Annual Hate Crime Counts")
+```
+
+::: {.callout-note appearance="simple" icon="false"}
+The average number of hate crimes per year is approximately 7,690, with a standard deviation of 1,663. This suggests a relatively consistent but slightly growing trend over time. The interquartile range (IQR) of 1,427 indicates moderate variability across years.
+:::
+
+### 2. Annual Trend with Linear Regression
+
+```{r}
+
+yearly_trend <- crime %>%
+  count(year = year(as.Date(incident_date)))
+
+lm_model <- lm(n ~ year, data = yearly_trend)
+
+ggplot(yearly_trend, aes(x = year, y = n)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(color = "steelblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "salmon") +
+  labs(title = "Annual Hate Crimes in the U.S. with Linear Trend", x = "Year", y = "Number of Incidents") +
+  theme_minimal()
+
+summary(lm_model)
+
+```
+
+::: {.callout-note appearance="simple" icon="false"}
+As seen in the plot, hate crimes have trended upward over the last three decades.
+
+-   The linear regression model yielded a statistically significant coefficient for `year` (p = 0.045), indicating a positive upward trend in the number of hate crimes reported annually.
+
+-   The slope estimate (60.33) suggests that the number of reported hate crimes has increased by approximately 60 incidents per year since 1991 on average.
+
+This pattern supports the notion that hate-motivated incidents are becoming more prevalent over time and highlights the importance of continued monitoring and policy response. Although this does not imply causation, it signals a growing pattern that demands sustained attention.
+:::
+
+### 3. Most Common Bias Motivations
+
+```{r}
+
+top_bias <- crime %>%
+  count(bias_desc, sort = TRUE) %>%
+  slice_head(n = 10)
+
+ggplot(top_bias, aes(x = reorder(bias_desc, n), y = n)) +
+  geom_col(fill = "maroon") +
+  coord_flip() +
+  labs(title = "Top 10 Bias Motivations in U.S. Hate Crimes (Bar Chart)", x = "Bias Type", y = "Number of Incidents") +
+  theme_minimal()
+
+```
+
+::: {.callout-note appearance="simple" icon="false"}
+The bar chart shows that the most common bias motivation in the U.S. hate crimes is **Anti-Black or African American**, accounting for 84,531 cases. This is followed by **Anti-Jewish** and **Anti-White** motivations.
+
+The presence of both Anti-Black and Anti-White categories indicates racial tensions persist across multiple communities. Other frequent targets include gay men, Hispanic/Latino individuals, and mixed LGBTQ+ identities.
+:::
+
+```{r}
+
+crime <- crime %>%
+  mutate(year = year(as.Date(incident_date)))
+
+bias_by_year <- crime %>%
+  filter(!is.na(bias_desc)) %>%
+  count(year, bias_desc) %>%
+  group_by(year) %>%
+  mutate(share = n / sum(n)) %>%
+  ungroup()
+
+# Select top 5 for time series comparison
+
+top_5_bias <- crime %>%
+  count(bias_desc, sort = TRUE) %>%
+  slice_head(n = 5) %>%
+  pull(bias_desc)
+
+bias_filtered <- bias_by_year %>%
+  filter(bias_desc %in% top_5_bias)
+
+ggplot(bias_filtered, aes(x = year, y = share, color = bias_desc)) +
+  geom_line(linewidth = 1) +
+  labs(title = "Share of Top 5 Bias Motivations Over Time",
+       x = "Year", y = "Proportion of Hate Crimes",
+       color = "Bias Motivation") +
+  theme_minimal()
+
+```
+
+::: {.callout-note appearance="simple" icon="false"}
+The line plot showing the share of top 5 bias types over time reveals key historical dynamics:
+
+-   **Anti-Black** hate crimes have consistently constituted the largest share but have decreased from over 40% in the 1990s to around 30% in recent years.
+
+-   **Anti-Jewish** and **Anti-White** proportions have fluctuated, but remain within a stable band.
+
+-   **Anti-Hispanic or Latino** and **Anti-Gay (Male)** crimes have slightly increased in recent decades, indicating that while race-based hate remains dominant, other identity groups such as ethnicity and sexual orientation are increasingly represented among hate crime victims.
+:::
+
+### 4. Most Frequent Crime Locations
+
+```{r}
+
+top_locations <- crime %>%
+  count(location_name, sort = TRUE) %>%
+  slice_head(n = 10)
+
+ggplot(top_locations, aes(x = reorder(location_name, n), y = n)) +
+  geom_col(fill = "olivedrab") +
+  coord_flip() +
+  labs(title = "Top 10 U.S. Hate Crime Locations", x = "Location", y = "Number of Incidents") +
+  theme_minimal()
+```
+
+::: {.callout-note appearance="simple" icon="false"}
+-   The most common location for hate crimes is **residences/homes**, suggesting that hate-motivated violence often occurs in personal or domestic spaces, not just in public settings.
+
+-   The second most frequent location is **streets, sidewalks, and alleys**, indicating that open public spaces remain high-risk zones for identity-based victimization.
+
+-   Other prevalent locations include **schools, parking garages, places of worship**, and **commercial buildings**, showing that hate crimes span across both institutional and everyday environments.
+
+The presence of educational and religious spaces among the top locations underlines the need for targeted protective strategies in these areas. This spatial analysis underscores how hate crimes are not confined to isolated incidents, but occur across a range of physical and communal contexts that intersect with daily life.
+:::
+
+## Conclusion
+
+The findings from this analysis of FBI Hate Crime data highlight a persistent and growing challenge across American communities. Hate crimes have shown a statistically significant upward trend over the past three decades, increasing by an estimated 60 incidents per year on average. This trend alone demands attention from policymakers and community leaders.
+
+The data reveals that most hate crimes are motivated by biases related to race, religion, and sexual orientation. Anti-Black or African American bias remains the most frequent motivation, though hate crimes against Jewish, White, Hispanic, and LGBTQ+ communities also feature prominently. While race-based hate continues to dominate, recent increases in crimes targeting other identity groups underscore the need for expanded vigilance and protection.
+
+Spatial patterns show that hate crimes do not only occur in public spaces. In fact, the most common locations are private residences and roadways, with a substantial number also reported in schools, religious spaces, and workplaces. This points to the widespread nature of hate-based violence, reaching across both personal and communal spaces.
+
+Together, these findings offer clear, data-driven insights for policy development, education, and prevention. Monitoring trends by bias type and location over time can help direct resources and public attention to the most vulnerable populations and settings. Although limited in geographic and demographic detail, this dataset provides a powerful starting point for shaping a more equitable and secure society.
+
+## Citation
+
+-   Federal Bureau of Investigation. (2024, September 23). *Crime Data Explorer: Hate Crime Statistics* \[Data file\]. U.S. Department of Justice. [https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/downloads#datasets](https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/downloads#datasets)
+
+------------------------------------------------------------------------
+
+### **GitHub Repository**
+
+<https://github.com/sujingwenkim/US-hate-crime>
