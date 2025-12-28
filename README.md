@@ -5,15 +5,15 @@ This project analyzes long-term trends in hate crimes across the United States u
 
 ## Files
 
-- `kim_sujin_ps4.qmd`: Quarto source file with all code and analysis
-- `kim_sujin_ps4.html`: Rendered output (HTML report)
+- `index.qmd`: Quarto source file with all code and analysis
+- `index.html`: Rendered output (HTML report)
 - `hate_crime.rds`: Compressed dataset converted from the original FBI CSV
 - `README.md`: Project overview and instructions on reproduction
 
 ## How to Reproduce
 
 1. Clone or download this repository
-2. Open `kim_sujin_ps4.qmd` in RStudio
+2. Open `index.qmd` in RStudio
 3. Ensure the following packages are installed: `tidyverse`, `lubridate`, `ggplot2`, `knitr`
 4. Load the dataset using:
 ```r
@@ -21,7 +21,7 @@ crime <- readRDS("hate_crime.rds")
 ```
 5. Run all code chunks, or render the document by clicking **Render** in RStudio or using:
 ```r
-quarto::quarto_render("kim_sujin_ps4.qmd")
+quarto::quarto_render("index.qmd")
 ```
 
 ## Data Source
